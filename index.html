@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>persian-geo-analyzer — تحلیل‌گر GEO فارسی</title>
+<style>
+  :root {
+    --bg: #0b0e17; --bg2: #111627; --card: #151c33; --line: #263052;
+    --txt: #eef1f8; --mut: #9aa4c0; --acc: #38e1c6; --acc2: #f4b54a; --bad: #f4707a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Vazirmatn", "IRANSans", Tahoma, "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #1b2450 0%, var(--bg) 55%) fixed, var(--bg);
+    color: var(--txt); min-height: 100vh; padding: 40px 20px 80px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 30px; }
+  .badge {
+    display: inline-block; font-size: 13px; color: var(--acc);
+    border: 1px solid var(--acc); border-radius: 999px;
+    padding: 5px 16px; margin-bottom: 16px;
+  }
+  h1 { font-size: clamp(26px, 5vw, 40px); font-weight: 800; margin-bottom: 6px; }
+  h1 .t { color: var(--acc); font-family: ui-monospace, Consolas, monospace; font-size: .72em; }
+  .tagline { font-size: clamp(18px, 4vw, 24px); font-weight: 800; margin-bottom: 12px; }
+  p.sub { color: var(--mut); font-size: 15px; line-height: 1.9; max-width: 640px; margin: 0 auto; }
+  textarea {
+    width: 100%; min-height: 170px; font-family: inherit; font-size: 16px; line-height: 2;
+    color: var(--txt); background: var(--bg2); border: 2px solid var(--line);
+    border-radius: 16px; padding: 18px; outline: none; resize: vertical; margin-top: 26px;
+  }
+  textarea:focus { border-color: var(--acc); }
+  .samples { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .samples button, .analyze {
+    font-family: inherit; cursor: pointer; border-radius: 999px;
+  }
+  .samples button {
+    font-size: 13px; color: var(--mut); background: transparent;
+    border: 1px dashed var(--line); padding: 7px 16px;
+  }
+  .samples button:hover { color: var(--acc); border-color: var(--acc); }
+  .analyze {
+    display: block; width: 100%; font-size: 18px; font-weight: 800; color: #06281f;
+    background: var(--acc); border: none; padding: 15px; margin-top: 6px;
+  }
+  .analyze:hover { filter: brightness(1.08); }
+  #out { margin-top: 26px; display: none; }
+  .scorehead {
+    display: flex; align-items: center; gap: 18px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 16px; padding: 20px 24px; margin-bottom: 14px;
+  }
+  .bignum { font-size: 52px; font-weight: 800; color: var(--acc); line-height: 1; }
+  .bignum small { font-size: 20px; color: var(--mut); }
+  .grade {
+    font-size: 15px; font-weight: 800; border-radius: 10px; padding: 8px 18px;
+    background: #1e2a52; color: var(--acc2);
+  }
+  .glabel { color: var(--mut); font-size: 14px; margin-top: 6px; }
+  .cat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; margin-bottom: 10px; }
+  .cat .row1 { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+  .cat .row1 b { color: var(--txt); }
+  .cat .row1 span { color: var(--mut); font-family: ui-monospace, Consolas, monospace; }
+  .bar { height: 8px; background: #0a0e1c; border-radius: 99px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--acc2), var(--acc)); }
+  .bar.low i { background: var(--bad); }
+  .fixes { background: #12261f; border: 1px solid #1e4a3a; border-radius: 14px; padding: 18px 22px; margin-top: 14px; }
+  .fixes h3 { color: var(--acc); font-size: 16px; margin-bottom: 10px; }
+  .fixes li { color: var(--txt); font-size: 14.5px; line-height: 2; margin-right: 18px; }
+  .nofix { color: var(--mut); font-size: 14px; }
+  footer { text-align: center; color: var(--mut); font-size: 12.5px; margin-top: 50px; line-height: 2; }
+  footer a { color: var(--acc); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge">صفر دیپندنسی • فارسی‌اول</div>
+    <h1><span class="t">persian-geo-analyzer</span></h1>
+    <p class="tagline">آیا محتوای فارسی شما برای هوش مصنوعی خواناست؟</p>
+    <p class="sub">متن فارسی را بچسبانید؛ نمره‌ی استنادپذیری (۰ تا ۱۰۰) در ۵ بخش،
+      به‌همراه پیشنهادهای عملی بهبود می‌گیرید. همه‌ی پردازش داخل مرورگر شماست.</p>
+  </header>
+
+  <textarea id="t" placeholder="متن فارسی مقاله، لندینگ یا سؤالات متداول را اینجا بچسبانید…"></textarea>
+  <div class="samples" id="samples"></div>
+  <button class="analyze" id="go">تحلیل کن</button>
+
+  <div id="out"></div>
+
+  <footer>
+    ساخته‌شده توسط <a href="https://github.com/mohammad-abbasi-sh/persian-geo-analyzer" target="_blank" rel="noopener">mohammad-abbasi-sh/persian-geo-analyzer</a>
+    — نسخه‌ی وبِ پکیج پایتون (بدون نیاز به نصب)
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* JS port of src/fa_geo.py score_text (past single-text analysis).
+   \b is ASCII-only in JS, so word boundaries use Unicode lookarounds. */
+const W = "[\\p{L}\\p{N}_]";
+const NB = `(?<!${W})`, NA = `(?!${W})`;
+const _AR2FA = { "ي": "ی", "ك": "ک", "ة": "ه", "ؤ": "و", "إ": "ا", "أ": "ا" };
+const _FA2EN = "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩";
+
+function normalizeFa(s) {
+  s = (s == null ? "" : String(s)).normalize("NFKC");
+  s = s.replace(/[يكةؤإأ]/g, c => _AR2FA[c]);
+  s = s.replace(/[۰-۹٠-٩]/g, c => String(_FA2EN.indexOf(c) % 10));
+  s = s.replace(/[\u200c\u200d]/g, "").replace(/\s+/g, " ").trim();
+  return s;
+}
+const RX = (p, f) => new RegExp(p, (f || "") + "u");
+
+const DEF_PATTERNS = [
+  RX(`\\w+\\s+is\\s+(?:a|an|the)\\s`, "i"),
+  RX(`\\w+\\s+refers?\\s+to\\s`, "i"),
+  RX(`\\w+\\s+means?\\s`, "i"),
+  RX(`\\w+\\s+(?:can be |are )?defined\\s+as\\s`, "i"),
+  RX(`\\bin\\s+(?:simple|other)\\s+(?:terms|words)\\s*,`, "i"),
+  RX(`\\S+\\s+یعنی\\s`),
+  RX(`گفته\\s+میشود`),
+  RX(`عبارت\\s+است\\s+از`),
+  RX(`به\\s+معن[یی]\\s`),
+  RX(`تعریف.{0,40}[:：]`),
+];
+const EARLY_PATTERNS = [
+  RX(`\\b(?:is|are|was|were|means?|refers?)\\b`, "i"),
+  RX(`\\d+%`), RX(`\\$[\\d,]+`), RX(`\\d+\\s+(?:million|billion|thousand)`, "i"),
+  RX(`${NB}(?:است|هست|هستند|میباشد|میباشند)${NA}`),
+  RX(`\\d+[٪%]`),
+  RX(`\\d+\\s+(?:میلیون|میلیارد|هزار|تومان|ریال|دلار|یورو)`),
+];
+const CLAIM_EN = RX(`(?:according to|research shows|studies? (?:show|indicate|suggest|found)|data (?:shows|indicates|suggests))`, "i");
+const CLAIM_FA = RX(`(?:طبق|بر\\s+اساس|تحقیقات\\s+نشان\\s+میدهد|پژوهش\\s+نشان\\s+میدهد|آمار\\s+رسمی)`);
+const FA_PRON = RX(`${NB}(?:او|وی|آن|این|آنها|اینها|ایشان|خود|خویش|خودش|خویشتن|همو|همان|چنین|چنان)${NA}`, "g");
+const EN_PRON = RX(`\\b(?:it|they|them|their|this|that|these|those|he|she|his|her)\\b`, "gi");
+const LIST_M = RX(`(?:اول|دوم|سوم|چهارم|نخست|در\\s+نهایت|علاوه\\s+بر\\s+این|همچنین|از\\s+سویی|first|second|third|finally|additionally|moreover|furthermore)`, "i");
+const RESEARCH_M = RX(`(?:تحقیقات\\s+ما|بررسی\\s+ما|داده‌های\\s+ما|یافته‌های\\s+ما|نشان\\s+دادیم|our (?:research|study|data|analysis|survey|findings)|we (?:found|discovered|analyzed|surveyed|measured))`, "i");
+const EXAMPLE_M = RX(`(?:برای\\s+مثال|به\\s+عنوان\\s+مثال|مثلا|مطالعه\\s+موردی|در\\s+عمل|case study|for example|for instance|in practice|real-world|hands-on)`, "i");
+const MONEY = [RX(`[\\d,]+\\s*(?:تومان|ریال|دلار|یورو)`), RX(`\\d+\\s*(?:میلیون|میلیارد|هزار)\\s*(?:تومان|ریال|دلار|یورو)`), RX(`\\$[\\d,]+(?:\\.\\d+)?`)];
+const NUM_UNIT = RX(`\\b\\d+(?:,\\d{3})*(?:\\.\\d+)?\\s+(?:کاربر|مشتری|سایت|شرکت|کسبوکار|نفر|درصد|برابر|بازدید|صفحه|users|customers|pages|sites|companies|businesses|people|percent|times|x\\b)`, "i");
+const YEAR = RX(`\\b(?:1[34]\\d{2}|20[12]\\d)\\b`);
+const SOURCES = [RX(`(?:طبق|بر\\s+اساس|به\\s+گفته‌ی?|به\\s+نقل\\s+از)\\s+\\S+`), RX(`(?:دانشگاه\\s+(?:تهران|شریف|امیرکبیر|علم\\s+و\\s+صنعت)|مرکز\\s+آمار|بانک\\s+مرکزی)`), RX(`(?:Gartner|Forrester|McKinsey|Harvard|Stanford|MIT|Google|Microsoft|OpenAI|Anthropic)`)];
+
+const CMAX = { answer_block_quality: 30, self_containment: 25, structural_readability: 20, statistical_density: 15, uniqueness_signals: 10 };
+const CNAMES = { answer_block_quality: "کیفیت بلوک جواب", self_containment: "خودکفایی متن", structural_readability: "خوانایی ساختاری", statistical_density: "چگالی آماری", uniqueness_signals: "سیگنال یکتایی" };
+
+function gradeOf(t) {
+  if (t >= 80) return ["A", "بسیار استنادپذیر"];
+  if (t >= 65) return ["B", "استنادپذیری خوب"];
+  if (t >= 50) return ["C", "استنادپذیری متوسط"];
+  if (t >= 35) return ["D", "استنادپذیری پایین"];
+  return ["F", "استنادپذیری ضعیف"];
+}
+
+function scoreText(text, heading) {
+  const nq = normalizeFa(text);
+  const words = nq ? nq.split(" ") : [];
+  const wc = words.length;
+  const b = {};
+
+  let abq = 0;  // 1. answer_block_quality (30)
+  for (const p of DEF_PATTERNS) { if (p.test(nq)) { abq += 15; break; } }
+  const first60 = words.slice(0, 60).join(" ");
+  if (EARLY_PATTERNS.some(p => p.test(first60))) abq += 15;
+  if (heading && (heading.endsWith("?") || heading.endsWith("؟"))) abq += 10;
+  const sentences = nq.split(/[.!?؟؛]+/);
+  const clear = sentences.filter(s => { const n = s.trim().split(/\s+/).filter(Boolean).length; return n >= 5 && n <= 25; }).length;
+  if (sentences.length) abq += Math.floor(clear / sentences.length * 10);
+  if (CLAIM_EN.test(nq) || CLAIM_FA.test(nq)) abq += 10;
+  b.answer_block_quality = Math.min(abq, 30);
+
+  let sc = 0;  // 2. self_containment (25)
+  if (wc >= 134 && wc <= 167) sc += 10;
+  else if (wc >= 100 && wc <= 200) sc += 7;
+  else if (wc >= 80 && wc <= 250) sc += 4;
+  else if (!(wc < 30 || wc > 400)) sc += 2;
+  const pron = (nq.match(FA_PRON) || []).length + (nq.match(EN_PRON) || []).length;
+  if (wc > 0) {
+    const r = pron / wc;
+    if (r < 0.02) sc += 8; else if (r < 0.04) sc += 5; else if (r < 0.06) sc += 3;
+  }
+  const quoted = (text.match(/[«»"][^«»"]{2,60}[«»"]/g) || []).length;
+  const latinProper = (text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/g) || []).length;
+  if (quoted + latinProper >= 3) sc += 7; else if (quoted + latinProper >= 1) sc += 4;
+  b.self_containment = Math.min(sc, 25);
+
+  let sr = 0;  // 3. structural_readability (20)
+  if (sentences.length) {
+    const avg = wc / sentences.length;
+    if (avg >= 10 && avg <= 20) sr += 8; else if (avg >= 8 && avg <= 25) sr += 5; else sr += 2;
+  }
+  if (LIST_M.test(nq)) sr += 4;
+  if (RX(`(?:\\d+[\\.\\)]\\s|${NB}(?:قدم|مرحله|نکته|گام|step|tip)${NA}\\s*\\d+)`, "i").test(nq)) sr += 4;
+  if (text.includes("\n")) sr += 4;
+  b.structural_readability = Math.min(sr, 20);
+
+  let sd = 0;  // 4. statistical_density (15)
+  sd += Math.min((nq.match(/\d+(?:\.\d+)?[٪%]/g) || []).length * 3, 6);
+  sd += Math.min(MONEY.reduce((a, p) => a + (nq.match(new RegExp(p.source, "gu")) || []).length, 0) * 3, 5);
+  sd += Math.min((nq.match(new RegExp(NUM_UNIT.source, "giu")) || []).length * 2, 4);
+  if (YEAR.test(nq)) sd += 2;
+  for (const p of SOURCES) if (p.test(nq)) sd += 2;
+  b.statistical_density = Math.min(sd, 15);
+
+  let us = 0;  // 5. uniqueness_signals (10)
+  if (RESEARCH_M.test(nq)) us += 5;
+  if (EXAMPLE_M.test(nq)) us += 3;
+  if (RX(`(?:با\\s+استفاده\\s+از|using|with|via)\\s+[A-Z][a-z]+`).test(text)) us += 2;
+  b.uniqueness_signals = Math.min(us, 10);
+
+  const total = Object.values(b).reduce((a, x) => a + x, 0);
+  const [grade, label] = gradeOf(total);
+  return { total, grade, label, breakdown: b, wordCount: wc };
+}
+
+function suggestFixes(r) {
+  const b = r.breakdown, f = [];
+  if (b.answer_block_quality < 18) f.push("یک جمله‌ی تعریفی در ابتدا اضافه کنید («… یعنی …» یا «… عبارت است از …») و تیتر را سؤالی کنید (؟).");
+  if (b.self_containment < 15) f.push("بلوک را بین ۱۳۰ تا ۱۷۰ کلمه نگه دارید، ضمیرها (او/آن/این) را کم کنید و نام‌های خاص را کامل بنویسید.");
+  if (b.structural_readability < 12) f.push("از لیست (اول، دوم، …)، قدم‌های شماره‌دار و پاراگراف‌های کوتاه استفاده کنید.");
+  if (b.statistical_density < 9) f.push("آمار اضافه کنید: درصد (٪)، مبلغ (تومان)، سال (۱۴۰۳) و منبع («طبق …»).");
+  if (b.uniqueness_signals < 6) f.push("یک مثال واقعی، مطالعه‌ی موردی یا یافته‌ی اختصاصی («بررسی ما نشان داد …») اضافه کنید.");
+  return f;
+}
+
+/* ---------- UI ---------- */
+const $t = document.getElementById("t"), $out = document.getElementById("out");
+const SAMPLES = {
+  "متن ضعیف": "سئو خوب است. همه باید سئو کنند. او این را دوست دارد. آنها هم دوست دارند.",
+  "متن متوسط": "سئو یعنی بهینه‌سازی سایت برای موتورهای جستجو. اول تحقیق کلمه کلیدی کنید. دوم محتوای خوب بنویسید. در نهایت نتیجه را بسنجید.",
+  "متن قوی": "سئو یعنی بهینه‌سازی وب‌سایت برای موتورهای جستجو. طبق تحقیقات ما در سال ۱۴۰۳، ۷۳٪ کاربران فقط صفحه اول گوگل را می‌بینند و این آمار رسمی نشان می‌دهد سئو حیاتی است. اول: تحقیق کلمه کلیدی. دوم: تولید محتوا. برای مثال، فروش یکی از مشتریان ما ۴۵٪ رشد کرد و به ۲ میلیارد تومان رسید.",
+};
+const $s = document.getElementById("samples");
+Object.keys(SAMPLES).forEach(k => {
+  const btn = document.createElement("button");
+  btn.textContent = k;
+  btn.onclick = () => { $t.value = SAMPLES[k]; render(); };
+  $s.appendChild(btn);
+});
+
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function render() {
+  const text = $t.value.trim();
+  if (!text) { $out.style.display = "none"; return; }
+  const r = scoreText(text);
+  const fixes = suggestFixes(r);
+  let cats = "";
+  for (const k of Object.keys(CMAX)) {
+    const v = r.breakdown[k], max = CMAX[k], pct = Math.round(100 * v / max);
+    cats += `<div class="cat"><div class="row1"><b>${CNAMES[k]}</b><span>${v} / ${max}</span></div>` +
+            `<div class="bar${pct < 60 ? " low" : ""}"><i style="width:${pct}%"></i></div></div>`;
+  }
+  $out.innerHTML =
+    `<div class="scorehead"><div class="bignum">${r.total}<small>/100</small></div>` +
+    `<div><span class="grade">درجه ${r.grade}</span><div class="glabel">${r.label} • ${r.wordCount} کلمه</div></div></div>` +
+    cats +
+    (fixes.length
+      ? `<div class="fixes"><h3>پیشنهادهای بهبود</h3><ul>${fixes.map(f => `<li>${esc(f)}</li>`).join("")}</ul></div>`
+      : `<div class="fixes"><h3>پیشنهادهای بهبود</h3><p class="nofix">متن در وضعیت خوبی است — چیزی برای اصلاح نیست. 🎉</p></div>`);
+  $out.style.display = "block";
+}
+document.getElementById("go").onclick = render;
+$t.addEventListener("input", () => { if ($t.value.trim()) render(); else $out.style.display = "none"; });
+</script>
+</body>
+</html>
