@@ -1,0 +1,22 @@
+# persian-geo-analyzer
+
+Persian (Farsi) AI-citability (GEO) analyzer. Stdlib-only Python.
+
+## Commands
+- Score text: `python3 src/fa_geo.py --text "متن فارسی…"`
+- Score a page: `python3 src/fa_geo.py --url "https://…"`
+- Score a file: `python3 src/fa_geo.py --file page.html [--json]`
+- Tests: `python3 -m unittest discover -s tests`
+- MCP server (stdio): `python3 src/mcp_server.py` → tool `analyze_fa_geo`
+
+## Code rules
+- **Stdlib only** — no new dependencies, ever. HTML parsing via
+  `html.parser`, HTTP via `urllib`.
+- Persian matching runs on `normalize_fa()` output (ي/ك→ی/ک، digits→ASCII,
+  ZWNJ removed). Write regexes against the normalized form.
+- Keep English patterns working: every change must keep the English
+  regression samples in `tests/test_fa_geo.py` green.
+- Fix suggestions are user-facing Persian — clear, actionable, one line each.
+- Score bands: A≥80 B≥65 C≥50 D≥35 F<35. Category maxima:
+  answer_block_quality 30, self_containment 25, structural_readability 20,
+  statistical_density 15, uniqueness_signals 10.
