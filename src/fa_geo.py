@@ -81,10 +81,11 @@ CLAIM_PATTERNS_EN = (
 )
 CLAIM_PATTERNS_FA = r"(?:طبق|بر\s+اساس|تحقیقات\s+نشان\s+میدهد|پژوهش\s+نشان\s+میدهد|آمار\s+رسمی)"
 
-# Persian pronouns (self-containment: fewer = better).
-FA_PRONOUNS = (
-    r"\b(?:او|وی|آن|این|آنها|اینها|ایشان|خود|خویش|خودش|خویشتن|همو|همان|چنین|چنان)\b"
-)
+# Third-person pronouns only (self-containment: fewer = better).
+# NOTE: demonstrative determiners (این/آن/چنین/چنان/همان) and reflexives
+# (خود/خویش/خودش) are NOT penalized — they anchor nouns and are good Persian.
+# Only anaphoric او/وی/ایشان/آنها/اینها risk unresolved reference.
+FA_PRONOUNS = r"\b(?:او|وی|ایشان|آنها|اینها)\b"
 EN_PRONOUNS = (
     r"\b(?:it|they|them|their|this|that|these|those|he|she|his|her)\b"
 )
@@ -208,6 +209,10 @@ def score_text(text, heading=None):
     elif quoted + latin_proper >= 1:
         sc += 4
     scores["self_containment"] = min(sc, 25)
+    diagnostics = {
+        "pronoun_ratio": (pronouns / word_count) if word_count else 0.0,
+        "specificity_signals": quoted + latin_proper,
+    }
 
     # === 3. Structural Readability (20) ===
     sr = 0
@@ -260,6 +265,7 @@ def score_text(text, heading=None):
         "label_en": label_en,
         "label_fa": label_fa,
         "breakdown": scores,
+        "diagnostics": diagnostics,
         "preview": " ".join(text.split()[:30]) + ("..." if word_count > 30 else ""),
     }
 
@@ -380,10 +386,19 @@ def suggest_fixes(result):
             "(«… یعنی …»، «… عبارت است از …»). تیتر را سؤالی کنید (؟)."
         )
     if b["self_containment"] < 15:
-        fixes.append(
-            "بلوک را بین ۱۳۰ تا ۱۷۰ کلمه نگه دارید، ضمیرها (او/آن/این) را کم کنید "
-            "و نام‌های خاص را کامل بنویسید."
-        )
+        d = result.get("diagnostics", {})
+        wc = result.get("word_count", 0)
+        if wc and not 80 <= wc <= 250:
+            wc_fa = str(wc).translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
+            fixes.append(
+                f"طول بلوک را به ۱۳۰ تا ۱۷۰ کلمه برسانید (الان {wc_fa} کلمه است)."
+            )
+        if d.get("pronoun_ratio", 0) >= 0.02:
+            fixes.append(
+                "ضمیرهای سوم‌شخص (او/وی/ایشان) را کم کنید و به‌جای آن‌ها نام کامل را تکرار کنید."
+            )
+        if not d.get("specificity_signals"):
+            fixes.append("نام خاص، نقل‌قول یا عدد دقیق اضافه کنید تا متن خاص‌تر شود.")
     if b["structural_readability"] < 12:
         fixes.append(
             "از لیست (اول، دوم، …)، قدم‌های شماره‌دار و پاراگراف‌های کوتاه استفاده کنید."
