@@ -76,6 +76,20 @@ class TestStructure(unittest.TestCase):
             score_text(messy)["breakdown"]["self_containment"],
         )
 
+    def test_demonstrative_determiners_not_penalized(self):
+        # این/آن/خود/همان as determiners are good Persian, not pronouns.
+        # Regression: 2026-11-03 — a real article with 6× «این», 2× «خود»,
+        # 2× «همان» and zero او/وی/ایشان was wrongly told to "reduce pronouns".
+        plain = "سئو فرایندی تخصصی است. متخصص سئو استراتژی تدوین می‌کند."
+        with_determiners = (
+            "این راهنما را بخوانید. در این مقاله همان روش قبلی را توضیح می‌دهیم. "
+            "از خود مجموعه بپرسید. سئو فرایندی تخصصی است."
+        )
+        self.assertEqual(
+            score_text(plain)["breakdown"]["self_containment"],
+            score_text(with_determiners)["breakdown"]["self_containment"],
+        )
+
 
 class TestBlockExtraction(unittest.TestCase):
     def test_dl_qa_block(self):
