@@ -134,7 +134,7 @@ const EARLY_PATTERNS = [
 ];
 const CLAIM_EN = RX(`(?:according to|research shows|studies? (?:show|indicate|suggest|found)|data (?:shows|indicates|suggests))`, "i");
 const CLAIM_FA = RX(`(?:طبق|بر\\s+اساس|تحقیقات\\s+نشان\\s+میدهد|پژوهش\\s+نشان\\s+میدهد|آمار\\s+رسمی)`);
-const FA_PRON = RX(`${NB}(?:او|وی|آن|این|آنها|اینها|ایشان|خود|خویش|خودش|خویشتن|همو|همان|چنین|چنان)${NA}`, "g");
+const FA_PRON = RX(`${NB}(?:او|وی|ایشان|آنها|اینها)${NA}`, "g");
 const EN_PRON = RX(`\\b(?:it|they|them|their|this|that|these|those|he|she|his|her)\\b`, "gi");
 const LIST_M = RX(`(?:اول|دوم|سوم|چهارم|نخست|در\\s+نهایت|علاوه\\s+بر\\s+این|همچنین|از\\s+سویی|first|second|third|finally|additionally|moreover|furthermore)`, "i");
 const RESEARCH_M = RX(`(?:تحقیقات\\s+ما|بررسی\\s+ما|داده‌های\\s+ما|یافته‌های\\s+ما|نشان\\s+دادیم|our (?:research|study|data|analysis|survey|findings)|we (?:found|discovered|analyzed|surveyed|measured))`, "i");
@@ -213,13 +213,19 @@ function scoreText(text, heading) {
 
   const total = Object.values(b).reduce((a, x) => a + x, 0);
   const [grade, label] = gradeOf(total);
-  return { total, grade, label, breakdown: b, wordCount: wc };
+  const diagnostics = { pronounRatio: wc > 0 ? pron / wc : 0, specificitySignals: quoted + latinProper };
+  return { total, grade, label, breakdown: b, wordCount: wc, diagnostics };
 }
 
 function suggestFixes(r) {
   const b = r.breakdown, f = [];
   if (b.answer_block_quality < 18) f.push("یک جمله‌ی تعریفی در ابتدا اضافه کنید («… یعنی …» یا «… عبارت است از …») و تیتر را سؤالی کنید (؟).");
-  if (b.self_containment < 15) f.push("بلوک را بین ۱۳۰ تا ۱۷۰ کلمه نگه دارید، ضمیرها (او/آن/این) را کم کنید و نام‌های خاص را کامل بنویسید.");
+  if (b.self_containment < 15) {
+    const d = r.diagnostics || {}, wc = r.wordCount || 0;
+    if (wc && (wc < 80 || wc > 250)) f.push("طول بلوک را به ۱۳۰ تا ۱۷۰ کلمه برسانید (الان " + String(wc).replace(/[0-9]/g, c => "۰۱۲۳۴۵۶۷۸۹"[+c]) + " کلمه است).");
+    if ((d.pronounRatio || 0) >= 0.02) f.push("ضمیرهای سوم‌شخص (او/وی/ایشان) را کم کنید و به‌جای آن‌ها نام کامل را تکرار کنید.");
+    if (!d.specificitySignals) f.push("نام خاص، نقل‌قول یا عدد دقیق اضافه کنید تا متن خاص‌تر شود.");
+  }
   if (b.structural_readability < 12) f.push("از لیست (اول، دوم، …)، قدم‌های شماره‌دار و پاراگراف‌های کوتاه استفاده کنید.");
   if (b.statistical_density < 9) f.push("آمار اضافه کنید: درصد (٪)، مبلغ (تومان)، سال (۱۴۰۳) و منبع («طبق …»).");
   if (b.uniqueness_signals < 6) f.push("یک مثال واقعی، مطالعه‌ی موردی یا یافته‌ی اختصاصی («بررسی ما نشان داد …») اضافه کنید.");
